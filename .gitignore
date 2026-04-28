@@ -1,0 +1,33 @@
+# Session & browser data — never commit
+.browser_profile/
+
+# Exported reviews — local only
+exports/
+
+# Debug files
+debug_*.html
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+.env
+venv/
+.venv/
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
