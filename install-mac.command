@@ -52,6 +52,9 @@ python3 -m pip install \
     streamlit \
     --quiet 2>&1 | grep -v "^$" | sed 's/^/         /'
 
+# Force-reinstall numpy to avoid source-directory import errors
+python3 -m pip install --upgrade --force-reinstall numpy --quiet 2>&1 | grep -v "^$" | sed 's/^/         /'
+
 echo ""
 echo "  ✅  Packages installed"
 
@@ -73,7 +76,6 @@ echo "  [4/5] Installing app to ~/AmazonScraper..."
 APP_DIR="$HOME/AmazonScraper"
 mkdir -p "$APP_DIR"
 
-# Copy all app files (exclude hidden installer artifacts)
 rsync -a --exclude='.git' --exclude='__pycache__' \
     --exclude='*.pyc' --exclude='.DS_Store' \
     "$DIR/" "$APP_DIR/" 2>/dev/null || \
@@ -81,9 +83,9 @@ cp -r "$DIR/." "$APP_DIR/"
 
 echo "  ✅  App installed to ~/AmazonScraper"
 
-# ── Step 5: Create .app on Desktop ────────────────────────────────────────────
+# ── Step 5: Create Desktop shortcut (.command) ───────────────────────────────
 echo ""
-echo "  [5/5] Creating Amazon Scraper app on Desktop..."
+echo "  [5/5] Creating Desktop shortcut..."
 
 # Handle iCloud Desktop (common on modern Macs)
 if [ -d "$HOME/Library/Mobile Documents/com~apple~CloudDocs/Desktop" ]; then
@@ -92,78 +94,45 @@ else
     DESKTOP="$HOME/Desktop"
 fi
 
-APP_BUNDLE="$DESKTOP/Amazon Scraper.app"
+SHORTCUT="$DESKTOP/Amazon Scraper.command"
 
-# Build a minimal .app bundle with AppleScript
-mkdir -p "$APP_BUNDLE/Contents/MacOS"
-mkdir -p "$APP_BUNDLE/Contents/Resources"
-
-# Info.plist
-cat > "$APP_BUNDLE/Contents/Info.plist" << 'PLIST'
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
-  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-    <key>CFBundleExecutable</key>
-    <string>launcher</string>
-    <key>CFBundleIconFile</key>
-    <string>AppIcon</string>
-    <key>CFBundleIdentifier</key>
-    <string>com.growisto.amazonreviewer</string>
-    <key>CFBundleName</key>
-    <string>Amazon Scraper</string>
-    <key>CFBundlePackageType</key>
-    <string>APPL</string>
-    <key>CFBundleShortVersionString</key>
-    <string>1.0</string>
-    <key>LSUIElement</key>
-    <false/>
-</dict>
-</plist>
-PLIST
-
-# Launcher script (the actual executable inside the .app)
-cat > "$APP_BUNDLE/Contents/MacOS/launcher" << LAUNCHER
+cat > "$SHORTCUT" << LAUNCHER
 #!/bin/bash
 APP_DIR="\$HOME/AmazonScraper"
-LOG="\$APP_DIR/scraper.log"
 
 # Kill any previous instance on port 8501
 lsof -ti:8501 | xargs kill -9 2>/dev/null || true
 
-# Start Streamlit
+echo "Starting Amazon India Review Scraper..."
 cd "\$APP_DIR"
 python3 -m streamlit run webapp.py \\
     --server.port 8501 \\
-    --server.headless true > "\$LOG" 2>&1 &
+    --server.headless true &
+STREAMLIT_PID=\$!
 
-# Wait for server to be ready (up to 15s)
-for i in \$(seq 1 15); do
-    if curl -s http://localhost:8501 > /dev/null 2>&1; then
-        break
-    fi
-    sleep 1
-done
-
-# Open in browser
+sleep 3
 open "http://localhost:8501"
+
+echo "App running at http://localhost:8501"
+echo "Close this window to stop the scraper."
+wait \$STREAMLIT_PID
 LAUNCHER
 
-chmod +x "$APP_BUNDLE/Contents/MacOS/launcher"
+chmod +x "$SHORTCUT"
 
-echo "  ✅  Amazon Scraper.app created on Desktop"
+# Reveal in Finder so user can see it
+open -R "$SHORTCUT" 2>/dev/null || true
 
-# Reveal it in Finder so it's easy to find
-open -R "$APP_BUNDLE" 2>/dev/null || true
+echo ""
+echo "  ✅  Shortcut created on Desktop: 'Amazon Scraper.command'"
 
 # ── Done ─────────────────────────────────────────────────────────────────────
 echo ""
 echo "  ╔══════════════════════════════════════════╗"
 echo "  ║   Setup complete! 🎉                     ║"
 echo "  ║                                          ║"
-echo "  ║   'Amazon Scraper' is now on your        ║"
-echo "  ║   Desktop — double-click it to launch.   ║"
+echo "  ║   Double-click 'Amazon Scraper.command'  ║"
+echo "  ║   on your Desktop to launch the tool.   ║"
 echo "  ║                                          ║"
 echo "  ║   Finder has opened to show you where.  ║"
 echo "  ╚══════════════════════════════════════════╝"
